@@ -146,7 +146,6 @@ nav svg {
 }
 #introsection::before,
 #introsection::after {
-  content: "<HomePage/>";
   float: left;
   color: rgb(0, 134, 244);
 }
