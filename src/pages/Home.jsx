@@ -6,7 +6,9 @@ import IntroSection from "../components/IntroSection";
 import Loading from "../components/Loading";
 import NavContent from "../components/NavContent";
 import SvgComponent from "../components/SvgComponent";
+import logo from "../logo.png";
 import axios from 'axios';
+
 const Home = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [inputPrompt, setInputPrompt] = useState("");
@@ -16,25 +18,38 @@ const Home = () => {
 
   const chatLogRef = useRef(null);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const eventSource = new EventSource('https://0fdb-34-141-213-252.ngrok-free.app/hello');
+
+    eventSource.onmessage = function(event) {
+      const answer = event.data;
+      setChatLog([
+        ...chatLog,
+        {
+          chatPrompt: inputPrompt,
+          botMessage: answer,
+        },
+      ]);
+    };
+
+    eventSource.onerror = function(error) {
+      console.error("EventSource failed:", error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [inputPrompt]); // Add inputPrompt to dependency array to re-establish connection when it changes
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const data1={
-      question: "give me net income of meta"
-  };
     if (!responseFromAPI) {
       if (inputPrompt.trim() !== "") {
-        // Set responseFromAPI to true before making the fetch request
         setReponseFromAPI(true);
         setChatLog([...chatLog, { chatPrompt: inputPrompt }]);
-        callAPI();
 
-        // hide the keyboard in mobile devices
-        e.target.querySelector("input").blur();
-      }
-
-      async function callAPI() {
         try {
-          const response = await axios.post('http://127.0.0.1:8000/answer/', {question: inputPrompt});
+          const response = await axios.post('https://0fdb-34-141-213-252.ngrok-free.app/hello', { question: inputPrompt });
           console.log(response.data.answer)
           setChatLog([
             ...chatLog,
@@ -51,9 +66,9 @@ const Home = () => {
 
         setReponseFromAPI(false);
       }
-    }
 
-    setInputPrompt("");
+      setInputPrompt("");
+    }
   };
 
   useEffect(() => {
@@ -63,9 +78,7 @@ const Home = () => {
         block: "end",
       });
     }
-
-    return () => {};
-  }, []);
+  }, [chatLog]);
 
   return (
     <>
@@ -125,63 +138,47 @@ const Home = () => {
       <section className="chatBox">
         {chatLog.length > 0 ? (
           <div className="chatLogWrapper">
-            {chatLog.length > 0 &&
-              chatLog.map((chat, idx) => (
-                <div
-                  className="chatLog"
-                  key={idx}
-                  ref={chatLogRef}
-                  id={`navPrompt-${chat.chatPrompt.replace(
-                    /[^a-zA-Z0-9]/g,
-                    "-"
-                  )}`}
-                >
-                  <div className="chatPromptMainContainer">
-                    <div className="chatPromptWrapper">
-                      <Avatar bg="#5437DB" className="userSVG">
-                        <svg
-                          stroke="currentColor"
-                          fill="none"
-                          strokeWidth={1.9}
-                          viewBox="0 0 24 24"
-                          // strokeLinecap="round"
-                          // strokeLinejoin="round"
-                          className="h-6 w-6"
-                          height={40}
-                          width={40}
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                          <circle cx={12} cy={7} r={4} />
-                        </svg>
-                      </Avatar>
-                      <div id="chatPrompt">{chat.chatPrompt}</div>
-                    </div>
-                  </div>
-
-                  <div className="botMessageMainContainer">
-                    <div className="botMessageWrapper">
-                      <Avatar bg="#11a27f" className="openaiSVG">
-                        <SvgComponent w={41} h={41} />
-                      </Avatar>
-                      {chat.botMessage ? (
-                        <>
-                        
-                        <BotResponse
-                            response={chat.botMessage}
-                            chatLogRef={chatLogRef}
-                          />
-                        
-                        </>
-                      ) : err ? (
-                        <Error err={err} />
-                      ) : (
-                        <Loading />
-                      )}
-                    </div>
+            {chatLog.map((chat, idx) => (
+              <div className="chatLog" key={idx} ref={chatLogRef}>
+                <div className="chatPromptMainContainer">
+                  <div className="chatPromptWrapper">
+                    <Avatar bg="#5437DB" className="userSVG">
+                      <svg
+                        stroke="currentColor"
+                        fill="none"
+                        strokeWidth={1.9}
+                        viewBox="0 0 24 24"
+                        height={40}
+                        width={40}
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx={12} cy={7} r={4} />
+                      </svg>
+                    </Avatar>
+                    <div id="chatPrompt">{chat.chatPrompt}</div>
                   </div>
                 </div>
-              ))}
+
+                <div className="botMessageMainContainer">
+                  <div className="botMessageWrapper">
+                    <Avatar bg="#11a27f" className="openaiSVG">
+                      <SvgComponent w={41} h={41} />
+                    </Avatar>
+                    {chat.botMessage ? (
+                      <BotResponse
+                        response={chat.botMessage}
+                        chatLogRef={chatLogRef}
+                      />
+                    ) : err ? (
+                      <Error err={err} />
+                    ) : (
+                      <Loading />
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <IntroSection />
@@ -198,7 +195,7 @@ const Home = () => {
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
               autoFocus
-            ></input>
+            />
             <button aria-label="form submit" type="submit">
               <svg
                 fill="#ADACBF"
